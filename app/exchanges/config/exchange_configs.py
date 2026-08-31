@@ -59,6 +59,30 @@ BYBIT_CONFIG = ExchangeConfig(
 )
 
 
+BITGET_CONFIG = ExchangeConfig(
+    name="bitget",
+    rest_endpoint="https://api.bitget.com",
+    websocket_endpoint="wss://ws.bitget.com/v2/ws/public",
+    supported_symbols=frozenset(
+        {
+            "BTC/USDT",
+            "ETH/USDT",
+        }
+    ),
+    supported_timeframes=COMMON_TIMEFRAMES,
+    rate_limits=RateLimitConfig(
+        requests_per_minute=600,
+        retry_after_seconds=1.0,
+    ),
+    capabilities=ExchangeCapabilities(
+        supports_rest=True,
+        supports_websocket=True,
+        supports_historical_data=True,
+        supports_incremental_data=True,
+    ),
+)
+
+
 OKX_CONFIG = ExchangeConfig(
     name="okx",
     rest_endpoint="https://www.okx.com",
@@ -119,6 +143,7 @@ COINBASE_CONFIG = ExchangeConfig(
 EXCHANGE_CONFIGS: dict[str, ExchangeConfig] = {
     "binance": BINANCE_CONFIG,
     "bybit": BYBIT_CONFIG,
+    "bitget": BITGET_CONFIG,
     "okx": OKX_CONFIG,
     "kraken": KRAKEN_CONFIG,
     "coinbase": COINBASE_CONFIG,
@@ -132,7 +157,6 @@ def get_exchange_config(name: str) -> ExchangeConfig:
     Raises:
         KeyError: if the exchange is not configured.
     """
-
     normalized_name = name.strip().lower()
 
     try:

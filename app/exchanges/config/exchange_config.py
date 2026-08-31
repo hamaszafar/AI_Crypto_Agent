@@ -44,8 +44,13 @@ class ExchangeConfig:
     rest_endpoint: str
     websocket_endpoint: str | None = None
 
-    supported_symbols: FrozenSet[str] = field(default_factory=frozenset)
-    supported_timeframes: FrozenSet[str] = field(default_factory=frozenset)
+    supported_symbols: FrozenSet[str] = field(
+        default_factory=frozenset
+    )
+
+    supported_timeframes: FrozenSet[str] = field(
+        default_factory=frozenset
+    )
 
     rate_limits: RateLimitConfig = field(
         default_factory=lambda: RateLimitConfig(

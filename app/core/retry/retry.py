@@ -42,21 +42,28 @@ class RetryPolicy:
         max_backoff: float = 30.0,
     ) -> None:
         if max_attempts < 1:
-            raise ValueError("max_attempts must be >= 1")
+            raise ValueError(
+                "max_attempts must be >= 1"
+            )
 
         if backoff_factor < 0:
-            raise ValueError("backoff_factor must be >= 0")
+            raise ValueError(
+                "backoff_factor must be >= 0"
+            )
 
         if max_backoff < 0:
-            raise ValueError("max_backoff must be >= 0")
+            raise ValueError(
+                "max_backoff must be >= 0"
+            )
 
         self.max_attempts = max_attempts
         self.backoff_factor = backoff_factor
         self.max_backoff = max_backoff
 
-    def should_retry_exception(self, exc: Exception) -> bool:
-        """Return whether an exception is retryable."""
-
+    def should_retry_exception(
+        self,
+        exc: Exception,
+    ) -> bool:
         return isinstance(
             exc,
             (
@@ -69,26 +76,39 @@ class RetryPolicy:
         self,
         response: requests.Response,
     ) -> bool:
-        """Return whether an HTTP response should be retried."""
-
         status_code = response.status_code
 
-        return status_code == 429 or 500 <= status_code <= 599
+        return (
+            status_code == 429
+            or 500 <= status_code <= 599
+        )
 
-    def get_backoff(self, attempt: int) -> float:
-        """Calculate exponential backoff."""
+    def get_backoff(
+        self,
+        attempt: int,
+    ) -> float:
+        if attempt < 1:
+            raise ValueError(
+                "attempt must be >= 1"
+            )
 
-        delay = self.backoff_factor * (2 ** (attempt - 1))
+        delay = (
+            self.backoff_factor
+            * (2 ** (attempt - 1))
+        )
 
-        return min(delay, self.max_backoff)
+        return min(
+            delay,
+            self.max_backoff,
+        )
 
     def get_retry_after(
         self,
         response: requests.Response,
     ) -> float | None:
-        """Read Retry-After header when available."""
-
-        value = response.headers.get("Retry-After")
+        value = response.headers.get(
+            "Retry-After"
+        )
 
         if value is None:
             return None
@@ -101,39 +121,60 @@ class RetryPolicy:
         if delay < 0:
             return None
 
-        return min(delay, self.max_backoff)
+        return min(
+            delay,
+            self.max_backoff,
+        )
 
     def execute(
         self,
         operation: Callable[[], T],
     ) -> T:
-        """Execute an operation with retry handling."""
-
         last_exception: Exception | None = None
 
-        for attempt in range(1, self.max_attempts + 1):
+        for attempt in range(
+            1,
+            self.max_attempts + 1,
+        ):
             try:
                 result = operation()
 
-                if isinstance(result, requests.Response):
+                if isinstance(
+                    result,
+                    requests.Response,
+                ):
+                    # Success
                     if result.ok:
                         return result
 
-                    if self.should_retry_response(result):
-                        if attempt == self.max_attempts:
+                    # Retryable HTTP status
+                    if self.should_retry_response(
+                        result
+                    ):
+                        if (
+                            attempt
+                            == self.max_attempts
+                        ):
                             result.raise_for_status()
 
-                        retry_after = self.get_retry_after(result)
+                        retry_after = (
+                            self.get_retry_after(
+                                result
+                            )
+                        )
 
                         delay = (
                             retry_after
                             if retry_after is not None
-                            else self.get_backoff(attempt)
+                            else self.get_backoff(
+                                attempt
+                            )
                         )
 
                         time.sleep(delay)
                         continue
 
+                    # Non-retryable 4xx
                     result.raise_for_status()
 
                 return result
@@ -144,10 +185,15 @@ class RetryPolicy:
             ) as exc:
                 last_exception = exc
 
-                if attempt == self.max_attempts:
+                if (
+                    attempt
+                    == self.max_attempts
+                ):
                     break
 
-                time.sleep(self.get_backoff(attempt))
+                time.sleep(
+                    self.get_backoff(attempt)
+                )
 
         raise RetryError(
             "Operation failed after maximum retry attempts.",

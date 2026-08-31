@@ -90,6 +90,7 @@ def test_binance_configuration_exists():
 def test_all_exchange_configurations_exist():
     expected = {
         "binance",
+        "bitget",
         "bybit",
         "okx",
         "kraken",
@@ -97,7 +98,6 @@ def test_all_exchange_configurations_exist():
     }
 
     assert set(EXCHANGE_CONFIGS.keys()) == expected
-
 
 def test_get_exchange_config_is_case_insensitive():
     assert get_exchange_config("BINANCE") is BINANCE_CONFIG
@@ -112,6 +112,7 @@ def test_get_exchange_config_unknown_exchange():
 def test_available_exchange_configs():
     assert available_exchange_configs() == [
         "binance",
+        "bitget",
         "bybit",
         "coinbase",
         "kraken",

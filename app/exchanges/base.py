@@ -7,7 +7,6 @@ from app.exchanges.types import Symbol, Timeframe
 
 class BaseExchange(ABC):
     """Abstract interface that every exchange implementation must follow."""
-
     @property
     @abstractmethod
     def name(self) -> str:

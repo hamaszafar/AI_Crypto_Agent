@@ -21,7 +21,6 @@ class BitgetExchange(BaseExchange):
 
     def __init__(self, session: requests.Session | None = None) -> None:
         self._session = session if session is not None else requests.Session()
-
     @property
     def name(self) -> str:
         return "bitget"

@@ -3,18 +3,16 @@ from __future__ import annotations
 from collections.abc import Iterable
 from decimal import Decimal
 
+from app.market_data.exceptions import CandleValidationError
 from app.market_data.models import MarketCandle
+from app.market_data.normalization.service import MarketDataNormalizer
 
 
 CandleIdentity = tuple[str, str, str, object]
 
 
-class CandleValidationError(ValueError):
-    """Raised when a market candle fails validation."""
-
-
 # ============================================================
-# 2A.13.3 � OHLC VALIDATION
+# 2A.13.3 — OHLC VALIDATION
 # ============================================================
 
 def validate_ohlc(candle: MarketCandle) -> None:
@@ -88,12 +86,12 @@ def _validate_price(name: str, value: Decimal) -> None:
 
     if value <= Decimal("0"):
         raise CandleValidationError(
-            f"volume cannot be negative: {value!r}"
+            f"{name} price must be positive: {value!r}"
         )
 
 
 # ============================================================
-# 2A.13.4 � VOLUME VALIDATION
+# 2A.13.4 — VOLUME VALIDATION
 # ============================================================
 
 def validate_volume(candle: MarketCandle) -> None:
@@ -130,7 +128,7 @@ def is_valid_volume(candle: MarketCandle) -> bool:
 
 
 # ============================================================
-# 2A.13.5 � DUPLICATE DETECTION
+# 2A.13.5 — DUPLICATE DETECTION
 # ============================================================
 
 def candle_identity(
@@ -220,7 +218,7 @@ def remove_duplicate_candles(
 
 
 # ============================================================
-# 2A.13.6 � CHRONOLOGICAL ORDERING
+# 2A.13.6 — CHRONOLOGICAL ORDERING
 # ============================================================
 
 def sort_chronologically(
@@ -316,7 +314,7 @@ def find_out_of_order_candles(
 
 
 # ============================================================
-# 2A.13.7 � EXCHANGE / SYMBOL / TIMEFRAME CONSISTENCY
+# 2A.13.7 — EXCHANGE / SYMBOL / TIMEFRAME CONSISTENCY
 # ============================================================
 
 def validate_consistency(
@@ -374,69 +372,62 @@ def is_consistent(
 
     return True
 
+
 # ============================================================
 # 2A.13.8 — COMPLETE MARKET DATA VALIDATION PIPELINE
 # ============================================================
 
 def validate_market_data(
-    candles: Iterable[MarketCandle],
+    candles: Iterable[object],
 ) -> list[MarketCandle]:
     """
     Run the complete market-data validation pipeline.
 
     Validation order:
-
-        1. Materialize input
+        1. Convert inputs to canonical MarketCandle instances
         2. OHLC validation
         3. Volume validation
         4. Exchange/symbol/timeframe consistency
         5. Duplicate detection
         6. Chronological ordering
 
-    The original collection is never modified.
-
     Returns:
         A validated list of MarketCandle objects.
 
     Raises:
-        CandleValidationError:
-            If any candle or the collection is invalid.
+        CandleValidationError: If any candle or collection is invalid.
     """
+    raw_list = list(candles)
 
-    validated = list(candles)
-
-    if not validated:
+    if not raw_list:
         return []
 
-    # --------------------------------------------------------
-    # 1. Individual candle validation
-    # --------------------------------------------------------
+    # 1. Normalization / Conversion to MarketCandle
+    validated: list[MarketCandle] = []
+    for item in raw_list:
+        if isinstance(item, MarketCandle):
+            validated.append(item)
+        elif hasattr(item, "exchange") and hasattr(item, "open"):
+            validated.append(MarketDataNormalizer.from_exchange_candle(item))
+        else:
+            raise CandleValidationError(f"Invalid candle input: {item!r}")
 
+    # 2. Individual candle validation
     for candle in validated:
         validate_ohlc(candle)
         validate_volume(candle)
 
-    # --------------------------------------------------------
-    # 2. Series consistency
-    # --------------------------------------------------------
-
+    # 3. Series consistency
     validate_consistency(validated)
 
-    # --------------------------------------------------------
-    # 3. Duplicate detection
-    # --------------------------------------------------------
-
+    # 4. Duplicate detection
     duplicates = find_duplicate_candles(validated)
-
     if duplicates:
         raise CandleValidationError(
             f"Duplicate candles detected: {len(duplicates)}"
         )
 
-    # --------------------------------------------------------
-    # 4. Chronological ordering
-    # --------------------------------------------------------
-
+    # 5. Chronological ordering
     if not is_strictly_chronological(validated):
         raise CandleValidationError(
             "Candles must be strictly chronological"

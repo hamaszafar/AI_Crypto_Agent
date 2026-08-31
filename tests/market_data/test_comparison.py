@@ -303,3 +303,101 @@ def test_duplicate_exchange_is_rejected():
 
     with pytest.raises(ValueError):
         comparator.compare(candles)
+
+
+def test_average_price():
+    comparator = CrossExchangeComparator()
+    result = comparator.compare(make_candles())
+    assert result.average_price == Decimal("101")
+
+
+def test_average_volume():
+    comparator = CrossExchangeComparator()
+    result = comparator.compare(make_candles())
+    assert result.average_volume == Decimal("1100")
+
+
+def test_consensus_bullish():
+    candles = make_candles()
+    candles["binance"] = MarketCandle(
+        exchange="binance", symbol="BTC/USDT", timeframe="15m", timestamp=TIMESTAMP,
+        open=Decimal("99"), high=Decimal("110"), low=Decimal("90"), close=Decimal("105"), volume=Decimal("100")
+    )
+    candles["bybit"] = MarketCandle(
+        exchange="bybit", symbol="BTC/USDT", timeframe="15m", timestamp=TIMESTAMP,
+        open=Decimal("99"), high=Decimal("110"), low=Decimal("90"), close=Decimal("102"), volume=Decimal("100")
+    )
+    candles["okx"] = MarketCandle(
+        exchange="okx", symbol="BTC/USDT", timeframe="15m", timestamp=TIMESTAMP,
+        open=Decimal("101"), high=Decimal("110"), low=Decimal("90"), close=Decimal("100"), volume=Decimal("100")
+    )
+    comparator = CrossExchangeComparator()
+    result = comparator.compare(candles)
+    assert result.consensus == "bullish"
+
+
+def test_consensus_bearish():
+    candles = make_candles()
+    candles["binance"] = MarketCandle(
+        exchange="binance", symbol="BTC/USDT", timeframe="15m", timestamp=TIMESTAMP,
+        open=Decimal("105"), high=Decimal("110"), low=Decimal("90"), close=Decimal("99"), volume=Decimal("100")
+    )
+    candles["bybit"] = MarketCandle(
+        exchange="bybit", symbol="BTC/USDT", timeframe="15m", timestamp=TIMESTAMP,
+        open=Decimal("105"), high=Decimal("110"), low=Decimal("90"), close=Decimal("100"), volume=Decimal("100")
+    )
+    candles["okx"] = MarketCandle(
+        exchange="okx", symbol="BTC/USDT", timeframe="15m", timestamp=TIMESTAMP,
+        open=Decimal("99"), high=Decimal("110"), low=Decimal("90"), close=Decimal("100"), volume=Decimal("100")
+    )
+    comparator = CrossExchangeComparator()
+    result = comparator.compare(candles)
+    assert result.consensus == "bearish"
+
+
+def test_divergence_detected():
+    comparator = CrossExchangeComparator(divergence_threshold_percent=Decimal("1.5"))
+    result = comparator.compare(make_candles())
+    assert result.divergence.exists is True
+    assert set(result.divergence.exchanges) == {"binance", "bybit", "okx"}
+    assert result.divergence.difference_percent == Decimal("2.0")
+
+
+def test_no_divergence():
+    comparator = CrossExchangeComparator(divergence_threshold_percent=Decimal("5.0"))
+    result = comparator.compare(make_candles())
+    assert result.divergence.exists is False
+    assert result.divergence.exchanges == ()
+
+
+def test_outlier_detected():
+    candles = make_candles()
+    candles["okx"] = MarketCandle(
+        exchange="okx", symbol="BTC/USDT", timeframe="15m", timestamp=TIMESTAMP,
+        open=Decimal("99"), high=Decimal("120"), low=Decimal("90"), close=Decimal("110"), volume=Decimal("1000")
+    )
+    comparator = CrossExchangeComparator(outlier_threshold_percent=Decimal("5.0"))
+    result = comparator.compare(candles)
+    
+    assert len(result.outliers) == 1
+    assert result.outliers[0].exchange == "okx"
+    assert result.outliers[0].price == Decimal("110")
+
+
+def test_data_coverage():
+    comparator = CrossExchangeComparator(expected_exchange_count=5)
+    result = comparator.compare(make_candles())
+    
+    assert result.coverage.expected_exchanges == 5
+    assert result.coverage.available_exchanges == 3
+    assert result.coverage.missing_exchanges == 2
+    assert result.coverage.coverage_percent == Decimal("60")
+
+
+def test_data_coverage_no_expected():
+    comparator = CrossExchangeComparator()
+    result = comparator.compare(make_candles())
+    
+    assert result.coverage.expected_exchanges == 3
+    assert result.coverage.available_exchanges == 3
+    assert result.coverage.coverage_percent == Decimal("100")
