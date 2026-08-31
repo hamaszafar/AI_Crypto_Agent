@@ -18,6 +18,16 @@ from app.market_data.storage import MarketDataStorage
 from app.storage.repositories.memory_candle_repository import MemoryCandleRepository
 from app.storage.service import StorageService
 
+class MarketDataPipeline:
+    """Simple validation/normalization stub used by SignalOrchestrator."""
+
+    def __init__(self) -> None:
+        pass
+
+    def validate_and_normalize(self, candles):
+        """Return candles unchanged."""
+        return candles
+
 
 class CollectionPipeline:
     """
