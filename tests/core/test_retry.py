@@ -31,6 +31,7 @@ def test_timeout_is_retried(mock_sleep):
     policy = RetryPolicy(
         max_attempts=3,
         backoff_factor=1,
+        jitter=False,
     )
 
     operation = Mock(
@@ -56,6 +57,7 @@ def test_connection_error_is_retried(mock_sleep):
     policy = RetryPolicy(
         max_attempts=3,
         backoff_factor=1,
+        jitter=False,
     )
 
     operation = Mock(
@@ -77,6 +79,7 @@ def test_http_500_is_retried(mock_sleep):
     policy = RetryPolicy(
         max_attempts=3,
         backoff_factor=1,
+        jitter=False,
     )
 
     operation = Mock(
@@ -98,6 +101,7 @@ def test_http_503_is_retried(mock_sleep):
     policy = RetryPolicy(
         max_attempts=3,
         backoff_factor=1,
+        jitter=False,
     )
 
     operation = Mock(
@@ -118,6 +122,7 @@ def test_http_429_respects_retry_after(mock_sleep):
     policy = RetryPolicy(
         max_attempts=3,
         backoff_factor=1,
+        jitter=False,
     )
 
     rate_limited = make_response(429)
@@ -142,6 +147,7 @@ def test_non_retryable_4xx_fails_immediately(mock_sleep):
     policy = RetryPolicy(
         max_attempts=3,
         backoff_factor=1,
+        jitter=False,
     )
 
     response = make_response(400)
@@ -160,6 +166,7 @@ def test_retries_stop_after_max_attempts(mock_sleep):
     policy = RetryPolicy(
         max_attempts=3,
         backoff_factor=1,
+        jitter=False,
     )
 
     operation = Mock(
@@ -178,6 +185,7 @@ def test_http_500_fails_after_max_attempts(mock_sleep):
     policy = RetryPolicy(
         max_attempts=3,
         backoff_factor=1,
+        jitter=False,
     )
 
     operation = Mock(
@@ -195,6 +203,7 @@ def test_backoff_is_exponential():
     policy = RetryPolicy(
         max_attempts=5,
         backoff_factor=1,
+        jitter=False,
     )
 
     assert policy.get_backoff(1) == 1
@@ -208,6 +217,7 @@ def test_backoff_is_capped():
         max_attempts=5,
         backoff_factor=2,
         max_backoff=5,
+        jitter=False,
     )
 
     assert policy.get_backoff(1) == 2

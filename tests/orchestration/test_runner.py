@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, create_autospec
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from app.orchestration.universe import SymbolUniverse
 from app.orchestration.orchestrator import SignalOrchestrator

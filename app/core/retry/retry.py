@@ -40,6 +40,7 @@ class RetryPolicy:
         max_attempts: int = 3,
         backoff_factor: float = 1.0,
         max_backoff: float = 30.0,
+        jitter: bool = True,
     ) -> None:
         if max_attempts < 1:
             raise ValueError(
@@ -59,6 +60,7 @@ class RetryPolicy:
         self.max_attempts = max_attempts
         self.backoff_factor = backoff_factor
         self.max_backoff = max_backoff
+        self.jitter = jitter
 
     def should_retry_exception(
         self,
@@ -97,10 +99,15 @@ class RetryPolicy:
             * (2 ** (attempt - 1))
         )
 
-        return min(
+        base_delay = min(
             delay,
             self.max_backoff,
         )
+        
+        if self.jitter:
+            import random
+            return random.uniform(base_delay * 0.5, base_delay * 1.5)
+        return base_delay
 
     def get_retry_after(
         self,

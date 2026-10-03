@@ -16,6 +16,7 @@ from app.market_data.pipeline import MarketDataPipeline
 from app.signals.engine import SignalEngine, SignalConfig
 from app.signals.models import Signal, SignalContext
 from app.analysis.market_regime import MarketRegime
+from app.core.metrics import EXCHANGE_FAILURES
 from .execution import SignalExecutionMetadata
 
 logger = logging.getLogger(__name__)
@@ -68,13 +69,19 @@ class SignalOrchestrator:
         )
 
         # 1️⃣ Pull raw candles
-        raw_candles = self.exchange.get_ohlcv(
-            symbol=symbol,
-            timeframe=timeframe,
-            start_time=start_time,
-            end_time=end_time,
-        )
+        try:
+            raw_candles = self.exchange.get_ohlcv(
+                symbol=symbol,
+                timeframe=timeframe,
+                start_time=start_time,
+                end_time=end_time,
+            )
+        except Exception as e:
+            EXCHANGE_FAILURES.labels(exchange=self.exchange.name, operation="get_ohlcv").inc()
+            raise RuntimeError(f"Exchange data fetch failed for {symbol}/{timeframe}: {e}") from e
+
         if not raw_candles:
+            EXCHANGE_FAILURES.labels(exchange=self.exchange.name, operation="get_ohlcv").inc()
             raise RuntimeError(f"No market data for {symbol}/{timeframe}")
 
         # 2️⃣ Validate / normalize via pipeline (may raise)

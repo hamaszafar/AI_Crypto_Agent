@@ -234,3 +234,8 @@ class SignalRepository:
             (new_state, symbol, timeframe, timestamp.isoformat()),
         )
         self._db.connection.commit()
+
+    def close(self) -> None:
+        """Close the underlying database connection."""
+        if hasattr(self, '_db'):
+            self._db.close()

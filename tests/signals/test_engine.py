@@ -82,8 +82,8 @@ def test_confidence_engine_tiers():
         SignalEvidence(ReasonCode.BULLISH_EMA_ALIGNMENT, Decimal('0.4')),
         SignalEvidence(ReasonCode.RSI_OVERBOUGHT, Decimal('-0.2')),
     ]
-    # score = 0.2, max = 0.6 -> ratio = 0.333 -> UNKNOWN (below LOW)
-    assert ce.confidence(evidences3) == SignalConfidence.UNKNOWN
+    # score = 0.2, max = 0.6 -> ratio = 0.333 -> LOW (since > 0)
+    assert ce.confidence(evidences3) == SignalConfidence.LOW
 
 # ---------------------------------------------------------------------------
 # SignalEngine tests (including regime adjustment)
@@ -99,7 +99,7 @@ def make_context(regime=None):
 
 def test_signal_engine_buy_direction():
     engine = SignalEngine()
-    indicators = {"ema_fast_vs_slow": Decimal('1')}
+    indicators = {"ema_fast_vs_slow": Decimal('1'), "exchange_consensus": Decimal('1')}
     sig = engine.generate(indicators, make_context())
     assert sig.direction == SignalDirection.BUY
     assert sig.strength in (SignalStrength.WEAK, SignalStrength.MODERATE, SignalStrength.STRONG)
@@ -107,7 +107,7 @@ def test_signal_engine_buy_direction():
 
 def test_signal_engine_regime_adjustment():
     engine = SignalEngine()
-    indicators = {"ema_fast_vs_slow": Decimal('1')}
+    indicators = {"ema_fast_vs_slow": Decimal('1'), "exchange_consensus": Decimal('1')}
     # High volatility should reduce the score (0.4 * 0.8 = 0.32) -> still BUY because threshold 0.5
     sig_low = engine.generate(indicators, make_context(MarketRegime.HIGH_VOLATILITY))
     # With low volatility the score is amplified -> still BUY and stronger

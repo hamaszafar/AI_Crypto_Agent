@@ -12,6 +12,7 @@ from typing import List
 from app.orchestration.universe import SymbolUniverse
 from app.orchestration.orchestrator import SignalOrchestrator
 from app.signals.models import Signal
+from app.core.metrics import SIGNAL_GENERATION
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +42,10 @@ class MultiTimeframeRunner:
         for symbol, timeframe in self.universe.combinations():
             try:
                 sig = self.orchestrator.generate(symbol=symbol, timeframe=timeframe)
+                SIGNAL_GENERATION.labels(symbol=symbol, timeframe=timeframe, status="success").inc()
                 signals.append(sig)
             except Exception as exc:  # pragma: no cover – exercised via tests
+                SIGNAL_GENERATION.labels(symbol=symbol, timeframe=timeframe, status="failure").inc()
                 logger.error(
                     "Failed to generate signal",
                     extra={"symbol": symbol, "timeframe": timeframe, "error": str(exc)},

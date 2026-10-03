@@ -12,6 +12,7 @@ from typing import Callable
 
 from app.config.signal_agent_config import SignalAgentConfig
 from app.orchestration.runner import MultiTimeframeRunner
+from app.core.metrics import SCHEDULER_EXECUTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +35,10 @@ class SignalScheduler:
         while not self._stop_event.is_set():
             try:
                 signals = self._runner.run_all()
+                SCHEDULER_EXECUTIONS.labels(job="run_all", status="success").inc()
                 logger.info("Scheduler iteration completed", extra={"generated": len(signals)})
             except Exception as exc:  # pragma: no cover – defensive
+                SCHEDULER_EXECUTIONS.labels(job="run_all", status="failure").inc()
                 logger.error("Scheduler iteration failed", extra={"error": str(exc)})
             self._stop_event.wait(self._interval)
         logger.info("SignalScheduler stopped")
